@@ -1,0 +1,16 @@
+{
+  "name": "elechouse-rfid-tcp-broker",
+  "version": "0.1.0",
+  "description": "Cloud TCP broker and browser test page for ELECHOUSE RFID reader demos.",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "UNLICENSED",
+  "private": true
+}

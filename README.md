@@ -2,16 +2,20 @@
 
 Cloud TCP Broker + browser test page for Network RFID/NFC reader demos.
 
+Primary firmware target: `ESP32S3_LF_HF_Network_RFID` in `ELECHOUSE Test` mode.
+
+Primary hardware target: ELECHOUSE Network RFID Reader Mainboard with ESP32-S3 SuperMini controller and ST25R3916B HF frontend.
+
 This project lets a browser test page and a hardware RFID reader communicate through a small cloud broker:
 
-- The browser opens a test page and receives a random session code.
+- The browser opens a test page and receives a temporary session code.
 - The RFID device connects to one fixed TCP endpoint as a plain TCP client.
-- The first packet from the device is `HELLO <SESSION_CODE>\n`.
+- The first packet from the device is `HELLO <SESSION_CODE> <DEVICE_ID>\n`.
 - The broker binds that device TCP socket to the browser session.
-- Card data uploaded by the device appears in the browser in real time.
-- The browser can also send simple text commands back to the device through the same TCP socket.
+- LF/HF card data uploaded by the device appears in the browser in real time.
+- The browser can also send firmware commands back to the device through the same TCP socket.
 
-The device firmware does **not** need HTTP, HTTPS, or WebSocket support. It only needs a normal TCP client.
+The device firmware does **not** need HTTP, HTTPS, or WebSocket support. It only needs a normal TCP client. The current ELECHOUSE firmware uploads card events as JSON Lines in `ELECHOUSE Test` mode.
 
 ## Features
 
@@ -108,13 +112,13 @@ SMOKE_OK
 Device connects to the TCP port, then sends one line within 10 seconds:
 
 ```text
-HELLO <SESSION_CODE>\n
+HELLO <SESSION_CODE> <DEVICE_ID>\n
 ```
 
-Example:
+Example from the current firmware:
 
 ```text
-HELLO A7K3Q9M2 PN7160-DEMO-001\n
+HELLO A7K3Q9M2 ELECHOUSE_RFID-68:EE:8F:DD:ED:04\n
 ```
 
 Successful reply:
@@ -123,19 +127,15 @@ Successful reply:
 OK A7K3Q9M2\n
 ```
 
-Then the device can upload card data as plain text:
+Then the current firmware uploads card events as JSON Lines:
 
 ```text
-CARD 04AABBCCDD\n
+{"type":"card","band":"HF","card_type":"ISO14443A","uid":"1C 2C FB 10","ms":1002132}\n
 ```
 
-Or JSON Lines:
+The broker also accepts plain text lines for simple demos, but the current `ESP32S3_LF_HF_Network_RFID` firmware uses the JSON Lines format above in `ELECHOUSE Test` mode.
 
-```text
-{"type":"card","uid":"04AABBCCDD","card_type":"ISO14443A"}\n
-```
-
-See [`docs/FIRMWARE_INTEGRATION.md`](docs/FIRMWARE_INTEGRATION.md) for firmware details and embedded pseudo-code.
+See [`docs/FIRMWARE_INTEGRATION.md`](docs/FIRMWARE_INTEGRATION.md) for firmware details, configuration commands, and troubleshooting.
 
 ## Configuration
 

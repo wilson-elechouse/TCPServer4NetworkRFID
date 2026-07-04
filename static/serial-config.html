@@ -866,11 +866,11 @@
       commands.push('hf tech v ' + (checked('techV') ? 'on' : 'off'));
       return commands;
     } else if (mode === 'card') {
-      const commands = ['hf card off'];
+      const commands = ['hf mode scan'];
       commands.push('hf card type ' + value('hfCardType'));
       if (value('cardUid')) commands.push('hf card uid ' + value('cardUid'));
       if (value('ndefUrl')) commands.push('hf card ndef url ' + value('ndefUrl'));
-      commands.push('hf card on');
+      commands.push('hf mode card');
       commands.push('hf card status');
       return commands;
     }
@@ -923,7 +923,7 @@
     });
     const help = {
       scan: 'Scan mode: enable the HF polling technologies the reader should look for.',
-      card: 'Card emulation mode: Apply HF sends card off → type/UID/NDEF settings → card on → status, so Type 2 memory is rebuilt after NDEF changes.'
+      card: 'Card emulation mode: Apply HF sends mode scan → type/UID/NDEF settings → mode card → status. Use Scan mode + Apply HF to stop emulation and return to reading cards.'
     };
     $('hfModeHelp').textContent = help[mode] || '';
   }

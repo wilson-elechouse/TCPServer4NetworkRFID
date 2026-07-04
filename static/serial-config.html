@@ -30,6 +30,8 @@
     p { line-height:1.58; }
     .muted { color:var(--muted); }
     .hero .muted { color:rgba(255,255,255,.84); }
+    .hero button.secondary { background:rgba(255,255,255,.92); color:#0f172a; }
+    .hero button.warn { background:#f59e0b; color:white; }
     .row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
     .hero-links { margin-top:14px; }
     .hero-links a { color:white; background:rgba(255,255,255,.14); padding:7px 10px; border-radius:999px; }
@@ -93,6 +95,11 @@
         <span id="portStatus" class="pill bad">Serial: disconnected</span>
         <span id="saveStatus" class="pill neutral">No unsaved changes tracked</span>
       </div>
+      <div class="row" style="margin-top:14px;">
+        <button id="saveBtn" class="secondary">Save settings to device</button>
+        <button id="rebootBtn" class="warn">Restart device</button>
+      </div>
+      <p class="muted" style="margin:10px 0 0;font-size:13px;">These are global device actions. Save stores runtime settings changed from any section of this page into device flash/NVS; Restart reboots the hardware.</p>
     </section>
 
     <div id="unsupportedNotice" class="notice bad" style="display:none;margin-top:18px;">
@@ -141,10 +148,7 @@
           <button id="connectBtn">Connect serial port</button>
           <button id="disconnectBtn" class="secondary" disabled>Disconnect</button>
           <button id="statusBundleBtn" class="ghost">Read device status</button>
-          <button id="saveBtn" class="secondary">Save settings to device</button>
-          <button id="rebootBtn" class="warn">Restart device</button>
         </div>
-        <p class="help"><b>Save settings to device</b> sends <code>save</code> and stores the current runtime configuration in device flash/NVS, so it remains after power-off. <b>Restart device</b> sends <code>reboot</code> and restarts the hardware.</p>
         <p class="help">Tip: product interface UART mode uses GPIO44/GPIO43. If the device is switched to Wiegand or ABA, use USB CDC or TCP for further command configuration.</p>
       </main>
     </div>
@@ -349,12 +353,12 @@
         </details>
 
         <details>
-          <summary>HF card emulation / tech switches</summary>
+          <summary>HF scan / card emulation</summary>
           <div class="form-grid" style="margin-top:12px;">
-            <div><label for="hfMode">HF mode</label><select id="hfMode"><option value="scan" selected>scan</option><option value="card">card</option></select></div>
-            <div><label for="cardUid">Card UID</label><input id="cardUid" placeholder="02 00 00 01"></div>
-            <div class="full"><label for="ndefUrl">NDEF URL</label><input id="ndefUrl" placeholder="https://www.elechouse.com/"></div>
-            <div class="row full">
+            <div><label for="hfMode">HF mode</label><select id="hfMode"><option value="scan" selected>Scan</option><option value="card">Card emulation</option></select></div>
+            <div class="hf-field" data-modes="card"><label for="cardUid">Card UID</label><input id="cardUid" placeholder="02 00 00 01"></div>
+            <div class="full hf-field" data-modes="card"><label for="ndefUrl">NDEF URL</label><input id="ndefUrl" placeholder="https://www.elechouse.com/"></div>
+            <div class="row full hf-field" data-modes="scan">
               <label class="inline"><input id="techA" type="checkbox" checked> ISO14443A</label>
               <label class="inline"><input id="techB" type="checkbox" checked> ISO14443B</label>
               <label class="inline"><input id="techF" type="checkbox" checked> NFC-F</label>
@@ -363,9 +367,10 @@
           </div>
           <div class="row" style="margin-top:12px;">
             <button id="applyHfBtn">Apply HF</button>
-            <button class="secondary" data-command="hf card status">hf card status</button>
+            <button class="secondary hf-field" data-modes="scan" data-command="hf status">hf status</button>
+            <button class="secondary hf-field" data-modes="card" data-command="hf card status">hf card status</button>
           </div>
-          <p class="help">Card emulation NDEF values are saved by firmware, but actual listen-mode support depends on the lower RFAL driver implementation.</p>
+          <p id="hfModeHelp" class="help"></p>
         </details>
 
         <details>
@@ -764,13 +769,17 @@
   }
 
   function buildHfCommands() {
-    const commands = ['hf mode ' + value('hfMode')];
-    commands.push('hf tech a ' + (checked('techA') ? 'on' : 'off'));
-    commands.push('hf tech b ' + (checked('techB') ? 'on' : 'off'));
-    commands.push('hf tech f ' + (checked('techF') ? 'on' : 'off'));
-    commands.push('hf tech v ' + (checked('techV') ? 'on' : 'off'));
-    if (value('cardUid')) commands.push('hf card uid ' + value('cardUid'));
-    if (value('ndefUrl')) commands.push('hf card ndef url ' + value('ndefUrl'));
+    const mode = value('hfMode');
+    const commands = ['hf mode ' + mode];
+    if (mode === 'scan') {
+      commands.push('hf tech a ' + (checked('techA') ? 'on' : 'off'));
+      commands.push('hf tech b ' + (checked('techB') ? 'on' : 'off'));
+      commands.push('hf tech f ' + (checked('techF') ? 'on' : 'off'));
+      commands.push('hf tech v ' + (checked('techV') ? 'on' : 'off'));
+    } else if (mode === 'card') {
+      if (value('cardUid')) commands.push('hf card uid ' + value('cardUid'));
+      if (value('ndefUrl')) commands.push('hf card ndef url ' + value('ndefUrl'));
+    }
     return commands;
   }
 
@@ -796,17 +805,6 @@
     addLog('err', error.message || String(error));
   }
 
-  function setPreview(title, commands) {
-    $('presetTitle').textContent = title;
-    $('presetPreview').value = commands.join('\n');
-  }
-
-  function appendSaveReboot(commands, includeReboot) {
-    const list = [...commands, 'save'];
-    if (includeReboot) list.push('reboot');
-    return list;
-  }
-
 
   function refreshTcpModeFields() {
     const mode = value('tcpMode');
@@ -821,6 +819,19 @@
       off: 'Off mode: disables the device TCP socket.'
     };
     $('tcpModeHelp').textContent = help[mode] || '';
+  }
+
+  function refreshHfModeFields() {
+    const mode = value('hfMode');
+    document.querySelectorAll('.hf-field').forEach((el) => {
+      const modes = String(el.dataset.modes || '').split(/\s+/).filter(Boolean);
+      el.style.display = modes.includes(mode) ? '' : 'none';
+    });
+    const help = {
+      scan: 'Scan mode: enable the HF polling technologies the reader should look for.',
+      card: 'Card emulation mode: configure the emulated NFC-A Type 4 Tag UID and NDEF URL. Actual listen-mode behavior depends on firmware/driver support.'
+    };
+    $('hfModeHelp').textContent = help[mode] || '';
   }
 
   function setupEvents() {
@@ -877,6 +888,7 @@
 
     $('interfaceMode').addEventListener('change', refreshInterfaceWarning);
     $('tcpMode').addEventListener('change', refreshTcpModeFields);
+    $('hfMode').addEventListener('change', refreshHfModeFields);
 
     if ('serial' in navigator) {
       navigator.serial.addEventListener('disconnect', (event) => {
@@ -899,6 +911,7 @@
   renderHistory();
   refreshInterfaceWarning();
   refreshTcpModeFields();
+  refreshHfModeFields();
   setupEvents();
   addLog('sys', 'Serial configuration page ready. Broker base: ' + BROKER_BASE_PATH);
 })();

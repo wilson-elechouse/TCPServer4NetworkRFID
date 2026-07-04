@@ -46,6 +46,7 @@
     .pill.warn { background:#fef3c7; color:#92400e; }
     .pill.neutral { background:#f1f5f9; color:#475569; }
     .notice { border:1px solid #bae6fd; background:#f0f9ff; color:#075985; padding:10px 12px; border-radius:12px; font-size:14px; }
+    .notice.ok { border-color:#bbf7d0; background:#f0fdf4; color:#166534; }
     .notice.warn { border-color:#fed7aa; background:#fff7ed; color:#9a3412; }
     .notice.bad { border-color:#fecaca; background:#fef2f2; color:#991b1b; }
     button { appearance:none; border:0; border-radius:11px; padding:10px 14px; font-weight:700; cursor:pointer; background:var(--brand); color:white; }
@@ -84,8 +85,10 @@
     .modal-backdrop { display:none; position:fixed; inset:0; z-index:9999; align-items:center; justify-content:center; padding:18px; background:rgba(15,23,42,.58); }
     .modal-backdrop.show { display:flex; }
     .modal { width:min(560px,100%); background:white; border-radius:18px; padding:22px; box-shadow:0 24px 80px rgba(15,23,42,.34); }
+    .modal.wide { width:min(760px,100%); }
     .modal h2 { margin:0 0 10px; font-size:22px; }
     .modal ul { margin:10px 0 0; padding-left:20px; line-height:1.55; color:#374151; }
+    .result-pre { max-height:210px; overflow:auto; margin:8px 0 0; padding:10px; border-radius:12px; background:#0f172a; color:#dbeafe; font-family:var(--mono); font-size:13px; line-height:1.45; white-space:pre-wrap; word-break:break-word; }
     @media (max-width: 920px) { .grid, .config-grid { grid-template-columns:1fr; } h1 { font-size:26px; } .terminal { height:340px; } }
     @media (max-width: 640px) { .form-grid, .form-grid.three { grid-template-columns:1fr; } .quick-grid { grid-template-columns:1fr; } .wrap { padding:18px 12px 40px; } }
   </style>
@@ -123,6 +126,21 @@
         </ul>
         <div class="row" style="justify-content:flex-end;margin-top:16px;">
           <button id="browserSupportClose" class="secondary">OK</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="commandResultModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="commandResultTitle" aria-describedby="commandResultSummary">
+      <div class="modal wide">
+        <h2 id="commandResultTitle">Command result</h2>
+        <div id="commandResultSummary" class="notice">Preparing commands...</div>
+        <h3>Sent commands</h3>
+        <pre id="commandResultSent" class="result-pre"></pre>
+        <h3>Device feedback</h3>
+        <pre id="commandResultFeedback" class="result-pre">Waiting for device feedback...</pre>
+        <div class="row" style="justify-content:flex-end;margin-top:16px;">
+          <button id="commandResultCopy" class="secondary">Copy details</button>
+          <button id="commandResultClose">Close</button>
         </div>
       </div>
     </div>
@@ -444,6 +462,8 @@
   let logEntries = [];
   let commandHistory = loadHistory();
   let unsavedChanges = false;
+  let activeCommandResult = null;
+  let lastCommandResultText = '';
 
   const readonlyPrefixes = [
     'help', 'status', 'pins', 'test',
@@ -481,6 +501,11 @@
     logEntries.push(entry);
     if (logEntries.length > LOG_LIMIT) logEntries = logEntries.slice(-LOG_LIMIT);
 
+    if (activeCommandResult && ['rx', 'err', 'sys'].includes(kind)) {
+      activeCommandResult.entries.push(entry);
+      updateCommandResultModal(activeCommandResult, 'Waiting for final feedback...', 'warn');
+    }
+
     const line = document.createElement('div');
     line.className = 'log-line';
     const time = document.createElement('span');
@@ -501,6 +526,91 @@
 
   function logText() {
     return logEntries.map((entry) => '[' + entry.at + '] ' + entry.kind.toUpperCase() + ' ' + entry.text).join('\n');
+  }
+
+  function formatEntries(entries) {
+    return entries.map((entry) => '[' + entry.at + '] ' + entry.kind.toUpperCase() + ' ' + entry.text).join('\n');
+  }
+
+  function updateCommandResultModal(run, summary, cls) {
+    if (!run) return;
+    $('commandResultTitle').textContent = run.title || 'Command result';
+    $('commandResultSummary').className = 'notice ' + (cls || '');
+    $('commandResultSummary').textContent = summary || 'Waiting for device feedback...';
+    $('commandResultSent').textContent = run.commands.join('\n');
+    $('commandResultFeedback').textContent = run.entries.length ? formatEntries(run.entries) : 'Waiting for device feedback...';
+    lastCommandResultText = [
+      $('commandResultTitle').textContent,
+      '',
+      'Summary:',
+      $('commandResultSummary').textContent,
+      '',
+      'Sent commands:',
+      $('commandResultSent').textContent,
+      '',
+      'Device feedback:',
+      $('commandResultFeedback').textContent
+    ].join('\n');
+  }
+
+  function showCommandResultModal(run) {
+    updateCommandResultModal(run, 'Sending commands...', 'warn');
+    $('commandResultModal').classList.add('show');
+  }
+
+  function feedbackWaitMs(commands) {
+    const text = commands.join('\n').toLowerCase();
+    if (/wifi scan/.test(text)) return 6500;
+    if (/reboot/.test(text)) return 1200;
+    if (/hf mode card|hf card status/.test(text)) return 2400;
+    if (/status|scan/.test(text)) return 2200;
+    return 1600;
+  }
+
+  function classifyCommandResult(run) {
+    if (run.writeError) {
+      return { cls: 'bad', text: 'Failed to send command: ' + run.writeError };
+    }
+
+    const feedback = run.entries.map((entry) => entry.text).join('\n');
+    const commands = run.commands.join('\n').toLowerCase();
+    if (/\bERR\b|\bERROR\b|\bFAIL(?:ED)?\b|INVALID|UNKNOWN COMMAND/i.test(feedback)) {
+      return { cls: 'bad', text: 'Device returned an error. Check the feedback below.' };
+    }
+
+    const isCardFlow = /hf mode card/.test(commands) && /hf card status/.test(commands);
+    if (isCardFlow) {
+      if (/role=card/i.test(feedback) && /active=yes/i.test(feedback)) {
+        return { cls: 'ok', text: 'Card emulation appears active: role=card and active=yes.' };
+      }
+      if (/role=scan/i.test(feedback) || /state=NOT_INIT/i.test(feedback)) {
+        return { cls: 'bad', text: 'Card emulation did not start. Status still shows scan role or NOT_INIT.' };
+      }
+      if (/role=card/i.test(feedback)) {
+        return { cls: 'warn', text: 'Device switched to card role, but activation is not confirmed yet. Check for active=yes when a phone/reader field is present.' };
+      }
+    }
+
+    if (/reboot/.test(commands)) {
+      return { cls: 'ok', text: 'Reboot command was sent. The device may disconnect or stop replying while restarting.' };
+    }
+
+    if (!run.entries.length) {
+      return { cls: 'warn', text: 'Commands were sent, but no device feedback was received during the wait window.' };
+    }
+
+    if (/\bOK\b|DONE|SAVED|SUCCESS|ready=yes|\bstatus\b|role=|mode=|ip=|ssid=|rssi=|freq=|speed=|baud=|format=|window=|dedupe=/i.test(feedback)) {
+      return { cls: 'ok', text: 'No device error detected and command/status feedback was received.' };
+    }
+
+    return { cls: 'warn', text: 'Feedback was received, but no clear success marker was detected. The feedback may be unrelated live scan output.' };
+  }
+
+  function finalizeCommandResult(run) {
+    if (!run) return;
+    const result = classifyCommandResult(run);
+    updateCommandResultModal(run, result.text, result.cls);
+    if (activeCommandResult === run) activeCommandResult = null;
   }
 
   function loadHistory() {
@@ -729,9 +839,12 @@
     const clean = String(command || '').trim();
     if (!clean) return;
     if (!port) {
-      addLog('err', 'Connect a serial port before sending commands. Command not sent: ' + clean);
+      const message = 'Connect a serial port before sending commands. Command not sent: ' + clean;
+      addLog('err', message);
+      if (options.throwOnError) throw new Error(message);
       return;
     }
+    let writeError = null;
     writeQueue = writeQueue.then(async () => {
       const payload = clean + (options.raw ? '' : lineEnding());
       await writeSerial(payload);
@@ -740,17 +853,39 @@
       if (clean.toLowerCase() === 'save') setUnsaved(false);
       else if (clean.toLowerCase() === 'clear') setUnsaved(false);
       else if (options.changesConfig || (!options.readonly && !isReadonlyCommand(clean) && clean.toLowerCase() !== 'reboot')) setUnsaved(true);
-    }).catch((error) => addLog('err', 'Serial write failed: ' + error.message));
+    }).catch((error) => {
+      writeError = error;
+      addLog('err', 'Serial write failed: ' + error.message);
+    });
     await writeQueue;
+    if (writeError && options.throwOnError) throw writeError;
   }
 
   async function sendCommands(commands, options = {}) {
     const list = commands.map((cmd) => String(cmd || '').trim()).filter(Boolean);
     if (!list.length) return;
     if (options.confirmText && !window.confirm(options.confirmText + '\n\n' + list.join('\n'))) return;
-    for (const command of list) {
-      await sendCommand(command, { changesConfig: options.changesConfig, readonly: options.readonly });
-      await sleep(delayMs());
+
+    const showResult = options.showResult !== false;
+    const run = showResult ? { title: options.title || 'Command result', commands: list, entries: [], writeError: null } : null;
+    if (run) {
+      activeCommandResult = run;
+      showCommandResultModal(run);
+    }
+
+    try {
+      for (const command of list) {
+        await sendCommand(command, { changesConfig: options.changesConfig, readonly: options.readonly, throwOnError: true });
+        await sleep(delayMs());
+      }
+    } catch (error) {
+      if (run) run.writeError = error.message || String(error);
+      else showError(error);
+    }
+
+    if (run) {
+      await sleep(options.feedbackWaitMs || feedbackWaitMs(list));
+      finalizeCommandResult(run);
     }
   }
 
@@ -933,6 +1068,14 @@
     $('browserSupportModal').addEventListener('click', (event) => {
       if (event.target === $('browserSupportModal')) $('browserSupportModal').classList.remove('show');
     });
+    $('commandResultClose').addEventListener('click', () => $('commandResultModal').classList.remove('show'));
+    $('commandResultModal').addEventListener('click', (event) => {
+      if (event.target === $('commandResultModal')) $('commandResultModal').classList.remove('show');
+    });
+    $('commandResultCopy').addEventListener('click', async () => {
+      await navigator.clipboard.writeText(lastCommandResultText || '');
+      addLog('sys', 'Command result copied');
+    });
     $('connectBtn').addEventListener('click', connectSerial);
     $('disconnectBtn').addEventListener('click', disconnectSerial);
     $('sendCommandBtn').addEventListener('click', () => sendCommand($('commandInput').value));
@@ -944,22 +1087,25 @@
     });
 
     document.querySelectorAll('[data-command]').forEach((button) => {
-      button.addEventListener('click', () => sendCommand(button.dataset.command || '', { readonly: isReadonlyCommand(button.dataset.command || '') }));
+      button.addEventListener('click', () => {
+        const command = button.dataset.command || '';
+        sendCommands([command], { readonly: isReadonlyCommand(command), title: command });
+      });
     });
 
-    $('statusBundleBtn').addEventListener('click', () => sendCommands(['status', 'wifi status', 'tcp status', 'elechouse status', 'interface status'], { readonly: true }));
-    $('saveBtn').addEventListener('click', () => sendCommand('save'));
-    $('rebootBtn').addEventListener('click', () => sendCommands(['reboot'], { confirmText: 'Reboot the device now?' }));
-    $('applyWifiBtn').addEventListener('click', () => { try { sendCommands(buildWifiCommands(), { changesConfig: true }); } catch (e) { showError(e); } });
-    $('wifiScanBtn').addEventListener('click', () => sendCommand('wifi scan', { readonly: true }));
-    $('wifiReconnectBtn').addEventListener('click', () => sendCommand('wifi reconnect'));
-    $('applyTcpBtn').addEventListener('click', () => { try { sendCommands(buildTcpCommands(), { changesConfig: true }); } catch (e) { showError(e); } });
-    $('applyInterfaceBtn').addEventListener('click', () => { try { sendCommands(buildInterfaceCommands(), { changesConfig: true }); } catch (e) { showError(e); } });
-    $('applyReaderBtn').addEventListener('click', () => { try { sendCommands(buildReaderCommands(), { changesConfig: true }); } catch (e) { showError(e); } });
-    $('applyRfBtn').addEventListener('click', () => { try { sendCommands(buildRfCommands(), { changesConfig: true }); } catch (e) { showError(e); } });
-    $('applyHfBtn').addEventListener('click', () => { try { sendCommands(buildHfCommands(), { changesConfig: true }); } catch (e) { showError(e); } });
-    $('applyFeedbackBtn').addEventListener('click', () => { try { sendCommands(buildFeedbackCommands(), { changesConfig: true }); } catch (e) { showError(e); } });
-    $('applyPortalBtn').addEventListener('click', () => { try { sendCommands(buildPortalCommands(), { changesConfig: true }); } catch (e) { showError(e); } });
+    $('statusBundleBtn').addEventListener('click', () => sendCommands(['status', 'wifi status', 'tcp status', 'elechouse status', 'interface status'], { readonly: true, title: 'Device status' }));
+    $('saveBtn').addEventListener('click', () => sendCommands(['save'], { title: 'Save settings to device' }));
+    $('rebootBtn').addEventListener('click', () => sendCommands(['reboot'], { confirmText: 'Reboot the device now?', title: 'Restart device' }));
+    $('applyWifiBtn').addEventListener('click', () => { try { sendCommands(buildWifiCommands(), { changesConfig: true, title: 'WiFi settings' }); } catch (e) { showError(e); } });
+    $('wifiScanBtn').addEventListener('click', () => sendCommands(['wifi scan'], { readonly: true, title: 'Scan nearby WiFi' }));
+    $('wifiReconnectBtn').addEventListener('click', () => sendCommands(['wifi reconnect'], { title: 'Reconnect saved WiFi' }));
+    $('applyTcpBtn').addEventListener('click', () => { try { sendCommands(buildTcpCommands(), { changesConfig: true, title: 'TCP / ELECHOUSE Test settings' }); } catch (e) { showError(e); } });
+    $('applyInterfaceBtn').addEventListener('click', () => { try { sendCommands(buildInterfaceCommands(), { changesConfig: true, title: 'Interface settings' }); } catch (e) { showError(e); } });
+    $('applyReaderBtn').addEventListener('click', () => { try { sendCommands(buildReaderCommands(), { changesConfig: true, title: 'Reader output settings' }); } catch (e) { showError(e); } });
+    $('applyRfBtn').addEventListener('click', () => { try { sendCommands(buildRfCommands(), { changesConfig: true, title: 'LF / HF settings' }); } catch (e) { showError(e); } });
+    $('applyHfBtn').addEventListener('click', () => { try { sendCommands(buildHfCommands(), { changesConfig: true, title: 'HF scan / card emulation' }); } catch (e) { showError(e); } });
+    $('applyFeedbackBtn').addEventListener('click', () => { try { sendCommands(buildFeedbackCommands(), { changesConfig: true, title: 'Feedback / Button settings' }); } catch (e) { showError(e); } });
+    $('applyPortalBtn').addEventListener('click', () => { try { sendCommands(buildPortalCommands(), { changesConfig: true, title: 'Setup portal settings' }); } catch (e) { showError(e); } });
 
 
     $('copyLogBtn').addEventListener('click', async () => {

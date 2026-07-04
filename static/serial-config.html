@@ -858,18 +858,23 @@
 
   function buildHfCommands() {
     const mode = value('hfMode');
-    const commands = ['hf mode ' + mode];
     if (mode === 'scan') {
+      const commands = ['hf mode scan'];
       commands.push('hf tech a ' + (checked('techA') ? 'on' : 'off'));
       commands.push('hf tech b ' + (checked('techB') ? 'on' : 'off'));
       commands.push('hf tech f ' + (checked('techF') ? 'on' : 'off'));
       commands.push('hf tech v ' + (checked('techV') ? 'on' : 'off'));
+      return commands;
     } else if (mode === 'card') {
+      const commands = ['hf card off'];
       commands.push('hf card type ' + value('hfCardType'));
       if (value('cardUid')) commands.push('hf card uid ' + value('cardUid'));
       if (value('ndefUrl')) commands.push('hf card ndef url ' + value('ndefUrl'));
+      commands.push('hf card on');
+      commands.push('hf card status');
+      return commands;
     }
-    return commands;
+    return [];
   }
 
   function buildFeedbackCommands() {
@@ -918,7 +923,7 @@
     });
     const help = {
       scan: 'Scan mode: enable the HF polling technologies the reader should look for.',
-      card: 'Card emulation mode: choose NFC Forum Type 2 or Type 4, then configure UID and NDEF URL. Actual listen-mode behavior depends on firmware/driver support.'
+      card: 'Card emulation mode: Apply HF sends card off → type/UID/NDEF settings → card on → status, so Type 2 memory is rebuilt after NDEF changes.'
     };
     $('hfModeHelp').textContent = help[mode] || '';
   }

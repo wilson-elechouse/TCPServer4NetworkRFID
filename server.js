@@ -245,7 +245,7 @@ function renderLoginRequiredPage() {
       <p>RFID TCP Broker 是在线调试工具。为了防止公开 TCP 服务被滥用，测试页面和 session 创建现在需要登录后使用。</p>
       <p>设备端不需要登录；设备只需要使用登录网页上生成的测试码连接 TCP Broker。</p>
       <a class="button" href="/my-account/">登录 / My Account</a>
-      <p><a class="link" href="${PUBLIC_BASE_PATH}/firmware">查看固件接入说明</a></p>
+      <p><a class="link" href="${PUBLIC_BASE_PATH}/firmware">查看固件接入说明</a> · <a class="link" href="${PUBLIC_BASE_PATH}/serial">免登录串口配置工具</a></p>
     </div>
   </main>
 </body>
@@ -408,6 +408,10 @@ async function handleHttp(req, res) {
 
   if (path === '/firmware.md' && req.method === 'GET') {
     return text(res, 200, readFirmwareDoc(), 'text/markdown; charset=utf-8');
+  }
+
+  if ((path === '/serial' || path === '/serial-config' || path === '/serial-config.html') && req.method === 'GET') {
+    return text(res, 200, renderSerialConfigPage(), 'text/html; charset=utf-8');
   }
 
   if (path === '/health' && req.method === 'GET') {
@@ -996,6 +1000,22 @@ function renderFirmwareDocHtml() {
 </html>`;
 }
 
+function renderSerialConfigPage() {
+  const htmlPath = path.join(__dirname, 'static', 'serial-config.html');
+  try {
+    return fs.readFileSync(htmlPath, 'utf8')
+      .replaceAll('%%BROKER_BASE_PATH_HTML%%', escapeHtml(PUBLIC_BASE_PATH))
+      .replaceAll('%%BROKER_BASE_PATH_JSON%%', JSON.stringify(PUBLIC_BASE_PATH));
+  } catch (error) {
+    log('warn', 'serial_config_page_read_failed', { error: error.message, htmlPath });
+    return `<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>RFID Serial Config</title></head>
+<body><h1>RFID Serial Config</h1><p>The serial configuration page is temporarily unavailable.</p></body>
+</html>`;
+  }
+}
+
 function renderPage(initialSession = null, initialError = '') {
   const basePath = PUBLIC_BASE_PATH;
   const initialCode = initialSession?.code || '------';
@@ -1064,6 +1084,7 @@ function renderPage(initialSession = null, initialError = '') {
           <button class="secondary" id="copyHelloBtn">Copy HELLO</button>
           <button class="secondary" id="copyConfigBtn">Copy device config</button>
           <a href="${basePath}/firmware" target="_blank" rel="noopener" style="color:#0f766e;font-weight:650;text-decoration:none;">Firmware guide</a>
+          <a href="${basePath}/serial" target="_blank" rel="noopener" style="color:#0f766e;font-weight:650;text-decoration:none;">Serial config tool</a>
         </div>
 
         <h2 style="margin-top:24px;">2. Device connection settings</h2>

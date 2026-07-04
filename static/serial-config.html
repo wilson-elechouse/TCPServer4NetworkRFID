@@ -1,0 +1,949 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ELECHOUSE RFID Serial Config Tool</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --brand:#0f766e;
+      --brand2:#0e7490;
+      --dark:#111827;
+      --muted:#6b7280;
+      --line:#e5e7eb;
+      --bg:#f8fafc;
+      --soft:#f1f5f9;
+      --ok:#16a34a;
+      --bad:#dc2626;
+      --warn:#d97706;
+      --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--dark); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    a { color:var(--brand); font-weight:650; text-decoration:none; }
+    .wrap { max-width:1240px; margin:0 auto; padding:28px 18px 52px; }
+    .hero { background:linear-gradient(135deg,var(--brand),var(--brand2)); color:white; border-radius:20px; padding:28px; box-shadow:0 18px 50px rgba(15,118,110,.22); }
+    h1 { margin:0 0 8px; font-size:30px; line-height:1.15; }
+    h2 { margin:0 0 14px; font-size:19px; }
+    h3 { margin:18px 0 10px; font-size:15px; color:#374151; }
+    p { line-height:1.58; }
+    .muted { color:var(--muted); }
+    .hero .muted { color:rgba(255,255,255,.84); }
+    .row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .hero-links { margin-top:14px; }
+    .hero-links a { color:white; background:rgba(255,255,255,.14); padding:7px 10px; border-radius:999px; }
+    .grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(340px,.82fr); gap:18px; margin-top:18px; }
+    .config-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; margin-top:18px; }
+    .card { background:white; border:1px solid var(--line); border-radius:18px; padding:18px; box-shadow:0 8px 24px rgba(15,23,42,.04); }
+    .card.soft { background:#fbfdff; }
+    .pill { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; background:#eef2ff; color:#3730a3; font-size:13px; font-weight:650; }
+    .pill.ok { background:#dcfce7; color:#166534; }
+    .pill.bad { background:#fee2e2; color:#991b1b; }
+    .pill.warn { background:#fef3c7; color:#92400e; }
+    .pill.neutral { background:#f1f5f9; color:#475569; }
+    .notice { border:1px solid #bae6fd; background:#f0f9ff; color:#075985; padding:10px 12px; border-radius:12px; font-size:14px; }
+    .notice.warn { border-color:#fed7aa; background:#fff7ed; color:#9a3412; }
+    .notice.bad { border-color:#fecaca; background:#fef2f2; color:#991b1b; }
+    button { appearance:none; border:0; border-radius:11px; padding:10px 14px; font-weight:700; cursor:pointer; background:var(--brand); color:white; }
+    button.secondary { background:#e5e7eb; color:#111827; }
+    button.ghost { background:#f1f5f9; color:#0f172a; }
+    button.warn { background:#d97706; color:white; }
+    button.bad { background:#dc2626; color:white; }
+    button.small { padding:7px 10px; border-radius:9px; font-size:13px; }
+    button:disabled { opacity:.55; cursor:not-allowed; }
+    input, select, textarea { width:100%; border:1px solid #d1d5db; border-radius:11px; padding:10px 12px; font:inherit; background:white; }
+    textarea { min-height:88px; resize:vertical; font-family:var(--mono); }
+    label { display:block; font-size:13px; font-weight:650; color:#374151; margin:0 0 6px; }
+    label.inline { display:flex; align-items:center; gap:8px; margin:0; font-size:14px; color:#374151; }
+    label.inline input { width:auto; }
+    .form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+    .form-grid.three { grid-template-columns:repeat(3,minmax(0,1fr)); }
+    .full { grid-column:1 / -1; }
+    code, .mono { font-family:var(--mono); }
+    .terminal { height:430px; overflow:auto; background:#020617; color:#dbeafe; border-radius:14px; padding:12px; font-family:var(--mono); font-size:13px; line-height:1.45; white-space:pre-wrap; word-break:break-word; }
+    .log-line { margin:0 0 5px; }
+    .time { color:#94a3b8; }
+    .rx { color:#86efac; }
+    .tx { color:#fcd34d; }
+    .sys { color:#93c5fd; }
+    .err { color:#fca5a5; }
+    .warn-text { color:#fdba74; }
+    .history { display:flex; flex-direction:column; gap:8px; margin-top:10px; }
+    .history-row { display:flex; gap:8px; align-items:center; }
+    .history-row button:first-child { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:left; font-family:var(--mono); font-weight:600; }
+    .quick-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+    .danger-zone { border:1px dashed #fecaca; background:#fff7f7; border-radius:14px; padding:12px; }
+    details { border:1px solid var(--line); border-radius:14px; padding:12px; background:white; }
+    summary { cursor:pointer; font-weight:800; color:#374151; }
+    .help { font-size:13px; color:var(--muted); margin-top:6px; }
+    .command-preview { min-height:132px; }
+    @media (max-width: 920px) { .grid, .config-grid { grid-template-columns:1fr; } h1 { font-size:26px; } .terminal { height:340px; } }
+    @media (max-width: 640px) { .form-grid, .form-grid.three { grid-template-columns:1fr; } .quick-grid { grid-template-columns:1fr; } .wrap { padding:18px 12px 40px; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>ELECHOUSE RFID Serial Config Tool</h1>
+      <p class="muted">Configure the ESP32-S3 LF/HF Network RFID reader from the browser through USB CDC or a product UART adapter. No ELECHOUSE account is required; commands are sent only to the serial port you select.</p>
+      <div class="row">
+        <span id="supportStatus" class="pill neutral">Checking browser</span>
+        <span id="portStatus" class="pill bad">Serial: disconnected</span>
+        <span id="saveStatus" class="pill neutral">No unsaved changes tracked</span>
+      </div>
+      <div class="row hero-links">
+        <a href="%%BROKER_BASE_PATH_HTML%%/">TCP Broker Test</a>
+        <a href="%%BROKER_BASE_PATH_HTML%%/firmware" target="_blank" rel="noopener">Firmware Guide</a>
+      </div>
+    </section>
+
+    <div id="unsupportedNotice" class="notice bad" style="display:none;margin-top:18px;">
+      This browser does not support Web Serial. Please use desktop Chrome, Edge, or another Chromium-based browser over HTTPS or localhost. Safari, Firefox, iOS, and most in-app browsers cannot open serial ports.
+    </div>
+
+    <div class="grid">
+      <main class="card">
+        <div class="row" style="justify-content:space-between;margin-bottom:12px;">
+          <h2 style="margin:0;">Serial connection</h2>
+          <span class="pill neutral">Default USB CDC: 115200 8N1</span>
+        </div>
+        <div class="form-grid three">
+          <div>
+            <label for="baudRate">Baud rate</label>
+            <select id="baudRate">
+              <option value="115200" selected>115200</option>
+              <option value="9600">9600</option>
+              <option value="19200">19200</option>
+              <option value="38400">38400</option>
+              <option value="57600">57600</option>
+              <option value="230400">230400</option>
+              <option value="460800">460800</option>
+              <option value="921600">921600</option>
+            </select>
+          </div>
+          <div>
+            <label for="lineEnding">Line ending</label>
+            <select id="lineEnding">
+              <option value="lf" selected>LF (\n)</option>
+              <option value="crlf">CRLF (\r\n)</option>
+              <option value="none">None</option>
+            </select>
+          </div>
+          <div>
+            <label for="sendDelay">Batch delay</label>
+            <select id="sendDelay">
+              <option value="60">60 ms</option>
+              <option value="100" selected>100 ms</option>
+              <option value="200">200 ms</option>
+              <option value="500">500 ms</option>
+            </select>
+          </div>
+        </div>
+        <div class="row" style="margin-top:14px;">
+          <button id="connectBtn">Connect serial port</button>
+          <button id="disconnectBtn" class="secondary" disabled>Disconnect</button>
+          <button id="statusBundleBtn" class="ghost">Read status</button>
+          <button id="saveBtn" class="secondary">save</button>
+          <button id="rebootBtn" class="warn">reboot</button>
+        </div>
+        <p class="help">Tip: product interface UART mode uses GPIO44/GPIO43. If the device is switched to Wiegand or ABA, use USB CDC or TCP for further command configuration.</p>
+      </main>
+
+      <aside class="card soft">
+        <h2>Common command presets</h2>
+        <div class="quick-grid">
+          <button class="ghost" data-command="status">status</button>
+          <button class="ghost" data-command="wifi status">wifi status</button>
+          <button class="ghost" data-command="tcp status">tcp status</button>
+          <button class="ghost" data-command="elechouse status">elechouse status</button>
+          <button class="ghost" data-command="interface status">interface status</button>
+          <button class="ghost" data-command="pins">pins</button>
+          <button class="ghost" data-command="test">test</button>
+          <button class="ghost" data-command="help">help</button>
+        </div>
+        <div class="danger-zone" style="margin-top:14px;">
+          <b>Dangerous commands</b>
+          <p class="help" style="margin:6px 0 10px;">These require confirmation because they can disconnect the device or erase saved configuration.</p>
+          <div class="row">
+            <button id="clearBtn" class="bad small">clear</button>
+            <button id="wifiClearBtn" class="bad small">wifi clear</button>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <div class="grid">
+      <main class="card">
+        <div class="row" style="justify-content:space-between;margin-bottom:12px;">
+          <h2 style="margin:0;">Serial terminal</h2>
+          <div class="row">
+            <button id="copyLogBtn" class="secondary small">Copy log</button>
+            <button id="downloadLogBtn" class="secondary small">Download log</button>
+            <button id="clearLogBtn" class="secondary small">Clear log</button>
+          </div>
+        </div>
+        <div id="terminal" class="terminal" aria-live="polite"></div>
+        <div class="row" style="margin-top:12px;align-items:stretch;">
+          <input id="commandInput" class="mono" placeholder="Type a command, e.g. wifi status" autocomplete="off" style="flex:1;min-width:240px;">
+          <button id="sendCommandBtn">Send</button>
+        </div>
+        <div class="row" style="justify-content:space-between;margin-top:12px;">
+          <b>Recent commands (last 10)</b>
+          <button id="clearHistoryBtn" class="secondary small">Clear history</button>
+        </div>
+        <div id="history" class="history"></div>
+      </main>
+
+      <aside class="card">
+        <h2>Preset wizard</h2>
+        <p class="help">Use the fields below, preview a common setup, then send the command list. The preview is editable before sending.</p>
+        <div class="quick-grid">
+          <button id="presetTcpServerBtn" class="ghost">WiFi + TCP Server</button>
+          <button id="presetElechouseBtn" class="ghost">ELECHOUSE Online Test</button>
+          <button id="presetUartBtn" class="ghost">UART output</button>
+          <button id="presetWiegandBtn" class="ghost">Wiegand 34-bit</button>
+          <button id="presetAbaBtn" class="ghost">ABA Clock/Data</button>
+          <button id="presetDefaultsBtn" class="ghost">Restore defaults</button>
+        </div>
+        <h3 id="presetTitle">Command preview</h3>
+        <textarea id="presetPreview" class="command-preview" placeholder="Click a preset button to generate commands. You can edit the list before sending."></textarea>
+        <div class="row" style="margin-top:10px;">
+          <button id="sendPreviewBtn">Send preview</button>
+          <button id="copyPreviewBtn" class="secondary">Copy</button>
+        </div>
+        <p class="help">For persistent settings, include <code>save</code>. Use <code>reboot</code> only when needed.</p>
+      </aside>
+    </div>
+
+    <div class="config-grid">
+      <section class="card">
+        <h2>WiFi</h2>
+        <div class="form-grid">
+          <div>
+            <label for="wifiSsid">SSID</label>
+            <input id="wifiSsid" placeholder="MyWifi" autocomplete="off">
+          </div>
+          <div>
+            <label for="wifiPassword">Password</label>
+            <input id="wifiPassword" type="password" placeholder="Password" autocomplete="off">
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px;">
+          <button id="applyWifiBtn">Send WiFi settings</button>
+          <button id="wifiScanBtn" class="secondary">wifi scan</button>
+          <button id="wifiReconnectBtn" class="secondary">wifi reconnect</button>
+        </div>
+        <p class="help">Current firmware command format is <code>wifi set &lt;ssid&gt; &lt;password&gt;</code>. If SSID or password contains spaces, verify firmware parser support before relying on it.</p>
+      </section>
+
+      <section class="card">
+        <h2>TCP / ELECHOUSE Test</h2>
+        <div class="form-grid">
+          <div>
+            <label for="tcpMode">TCP mode</label>
+            <select id="tcpMode">
+              <option value="server" selected>Server</option>
+              <option value="client">Client</option>
+              <option value="off">Off</option>
+            </select>
+          </div>
+          <div>
+            <label for="serverPort">Server port</label>
+            <input id="serverPort" value="9000" inputmode="numeric">
+          </div>
+          <div>
+            <label for="clientHost">Client host</label>
+            <input id="clientHost" placeholder="192.168.1.20 or domain">
+          </div>
+          <div>
+            <label for="clientPort">Client port</label>
+            <input id="clientPort" value="9000" inputmode="numeric">
+          </div>
+          <div>
+            <label for="elechouseCode">ELECHOUSE session code</label>
+            <input id="elechouseCode" placeholder="A7K3Q9M2" maxlength="64">
+          </div>
+          <div class="row" style="align-items:end;padding-bottom:4px;">
+            <label class="inline"><input id="tcpEvents" type="checkbox" checked> events</label>
+            <label class="inline"><input id="tcpCommands" type="checkbox" checked> commands</label>
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px;">
+          <button id="applyTcpBtn">Apply TCP</button>
+          <button id="applyElechouseBtn">Apply ELECHOUSE Test</button>
+          <button class="secondary" data-command="tcp status">tcp status</button>
+        </div>
+        <p class="help">TCP server port must not conflict with the portal web port. Avoid port 80; 9000 is recommended.</p>
+      </section>
+
+      <section class="card">
+        <h2>Product Interface</h2>
+        <div class="form-grid three">
+          <div>
+            <label for="interfaceMode">Mode</label>
+            <select id="interfaceMode">
+              <option value="uart" selected>UART</option>
+              <option value="wiegand">Wiegand D0/D1</option>
+              <option value="aba">ABA Clock/Data</option>
+            </select>
+          </div>
+          <div>
+            <label for="interfaceBaud">UART baud</label>
+            <input id="interfaceBaud" value="115200" inputmode="numeric">
+          </div>
+          <div>
+            <label for="wiegandBits">Wiegand bits</label>
+            <select id="wiegandBits">
+              <option value="26">26</option>
+              <option value="34" selected>34</option>
+              <option value="37">37</option>
+              <option value="56">56</option>
+            </select>
+          </div>
+          <div>
+            <label for="pulseUs">Pulse us</label>
+            <input id="pulseUs" value="80" inputmode="numeric">
+          </div>
+          <div>
+            <label for="pulseGapUs">Pulse gap us</label>
+            <input id="pulseGapUs" value="1800" inputmode="numeric">
+          </div>
+          <div>
+            <label for="abaDigits">ABA digits</label>
+            <input id="abaDigits" value="10" inputmode="numeric">
+          </div>
+          <div>
+            <label for="abaSource">ABA source</label>
+            <select id="abaSource">
+              <option value="raw" selected>Raw</option>
+              <option value="cn">CN</option>
+            </select>
+          </div>
+          <div class="row full">
+            <label class="inline"><input id="interfaceEnabled" type="checkbox" checked> interface enabled</label>
+            <label class="inline"><input id="interfaceEvents" type="checkbox" checked> events</label>
+            <label class="inline"><input id="interfaceCommands" type="checkbox" checked> UART commands</label>
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px;">
+          <button id="applyInterfaceBtn">Apply interface</button>
+          <button class="secondary" data-command="interface status">interface status</button>
+        </div>
+        <p id="interfaceWarning" class="notice warn" style="display:none;margin-top:12px;">Wiegand/ABA mode uses GPIO44/GPIO43 for pulse output. Product UART commands will no longer be available on those two pins.</p>
+      </section>
+
+      <section class="card">
+        <h2>Reader output</h2>
+        <div class="form-grid three">
+          <div>
+            <label for="outputFormat">Output format</label>
+            <select id="outputFormat">
+              <option value="json" selected>JSON</option>
+              <option value="line">Line</option>
+            </select>
+          </div>
+          <div>
+            <label for="lfWindow">LF window ms</label>
+            <input id="lfWindow" value="350" inputmode="numeric">
+          </div>
+          <div>
+            <label for="hfWindow">HF window ms</label>
+            <input id="hfWindow" value="350" inputmode="numeric">
+          </div>
+          <div>
+            <label for="dedupeMs">Dedupe ms</label>
+            <input id="dedupeMs" value="1000" inputmode="numeric">
+          </div>
+          <div>
+            <label for="lfAuto">LF auto</label>
+            <select id="lfAuto"><option value="on" selected>on</option><option value="off">off</option></select>
+          </div>
+          <div>
+            <label for="hfAuto">HF auto</label>
+            <select id="hfAuto"><option value="on" selected>on</option><option value="off">off</option></select>
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px;">
+          <button id="applyReaderBtn">Apply reader</button>
+          <button class="secondary" data-command="lf status">lf status</button>
+          <button class="secondary" data-command="hf status">hf status</button>
+        </div>
+      </section>
+    </div>
+
+    <section class="card" style="margin-top:18px;">
+      <h2>Advanced configuration</h2>
+      <div class="config-grid" style="margin-top:0;">
+        <details>
+          <summary>LF / HF</summary>
+          <div class="form-grid" style="margin-top:12px;">
+            <div><label for="lfFreq">LF carrier Hz</label><input id="lfFreq" value="125000" inputmode="numeric"></div>
+            <div><label for="hfSpeed">HF I2C Hz</label><input id="hfSpeed" value="100000" inputmode="numeric"></div>
+          </div>
+          <div class="row" style="margin-top:12px;">
+            <button id="applyRfBtn">Apply LF/HF speed</button>
+            <button class="secondary" data-command="hf probe">hf probe</button>
+            <button class="secondary" data-command="hf init">hf init</button>
+            <button class="secondary" data-command="lf init">lf init</button>
+          </div>
+        </details>
+
+        <details>
+          <summary>HF card emulation / tech switches</summary>
+          <div class="form-grid" style="margin-top:12px;">
+            <div><label for="hfMode">HF mode</label><select id="hfMode"><option value="scan" selected>scan</option><option value="card">card</option></select></div>
+            <div><label for="cardUid">Card UID</label><input id="cardUid" placeholder="02 00 00 01"></div>
+            <div class="full"><label for="ndefUrl">NDEF URL</label><input id="ndefUrl" placeholder="https://www.elechouse.com/"></div>
+            <div class="row full">
+              <label class="inline"><input id="techA" type="checkbox" checked> ISO14443A</label>
+              <label class="inline"><input id="techB" type="checkbox" checked> ISO14443B</label>
+              <label class="inline"><input id="techF" type="checkbox" checked> NFC-F</label>
+              <label class="inline"><input id="techV" type="checkbox" checked> ISO15693</label>
+            </div>
+          </div>
+          <div class="row" style="margin-top:12px;">
+            <button id="applyHfBtn">Apply HF</button>
+            <button class="secondary" data-command="hf card status">hf card status</button>
+          </div>
+          <p class="help">Card emulation NDEF values are saved by firmware, but actual listen-mode support depends on the lower RFAL driver implementation.</p>
+        </details>
+
+        <details>
+          <summary>Feedback / Button</summary>
+          <div class="form-grid three" style="margin-top:12px;">
+            <div><label for="buzzerHz">Buzzer Hz</label><input id="buzzerHz" value="2700" inputmode="numeric"></div>
+            <div><label for="buzzerMs">Buzzer ms</label><input id="buzzerMs" value="80" inputmode="numeric"></div>
+            <div><label for="successMs">Success ms</label><input id="successMs" value="2000" inputmode="numeric"></div>
+            <div><label for="wifiPressMs">WiFi press ms</label><input id="wifiPressMs" value="5000" inputmode="numeric"></div>
+            <div><label for="resetPressMs">Reset press ms</label><input id="resetPressMs" value="10000" inputmode="numeric"></div>
+            <div class="row" style="align-items:end;padding-bottom:4px;"><label class="inline"><input id="feedbackEnabled" type="checkbox" checked> feedback</label><label class="inline"><input id="buttonEnabled" type="checkbox" checked> button</label></div>
+          </div>
+          <div class="row" style="margin-top:12px;">
+            <button id="applyFeedbackBtn">Apply feedback/button</button>
+            <button class="secondary" data-command="feedback test">feedback test</button>
+          </div>
+        </details>
+
+        <details>
+          <summary>Portal / Hotspot</summary>
+          <div class="form-grid" style="margin-top:12px;">
+            <div><label for="portalSsid">AP SSID</label><input id="portalSsid" value="ELECHOUSE_RFID"></div>
+            <div><label for="portalPassword">AP password</label><input id="portalPassword" placeholder="empty = open hotspot"></div>
+          </div>
+          <div class="row" style="margin-top:12px;">
+            <button id="applyPortalBtn">Apply hotspot</button>
+            <button class="secondary" data-command="portal status">portal status</button>
+            <button class="secondary" data-command="portal on">portal on</button>
+            <button class="secondary" data-command="portal off">portal off</button>
+          </div>
+        </details>
+      </div>
+    </section>
+  </div>
+
+<script>
+(() => {
+  'use strict';
+
+  const BROKER_BASE_PATH = %%BROKER_BASE_PATH_JSON%%;
+  const HISTORY_KEY = 'elechouse-rfid-serial-history-v1';
+  const LOG_LIMIT = 1200;
+  const $ = (id) => document.getElementById(id);
+
+  let port = null;
+  let reader = null;
+  let keepReading = false;
+  let writeQueue = Promise.resolve();
+  let logEntries = [];
+  let commandHistory = loadHistory();
+  let unsavedChanges = false;
+
+  const readonlyPrefixes = [
+    'help', 'status', 'pins', 'test',
+    'wifi status', 'wifi scan', 'tcp status', 'elechouse status', 'interface status',
+    'lf status', 'hf status', 'hf probe', 'hf card status', 'feedback status', 'feedback test',
+    'button status', 'portal status'
+  ];
+
+  function setPill(el, text, cls) {
+    el.className = 'pill ' + (cls || 'neutral');
+    el.textContent = text;
+  }
+
+  function setUnsaved(value) {
+    unsavedChanges = Boolean(value);
+    if (unsavedChanges) {
+      setPill($('saveStatus'), 'Unsaved changes: run save to persist', 'warn');
+    } else {
+      setPill($('saveStatus'), 'Saved / no unsaved changes tracked', 'ok');
+    }
+  }
+
+  function nowTime() {
+    return new Date().toLocaleTimeString();
+  }
+
+  function printable(value) {
+    return String(value || '')
+      .replace(/\r/g, '\\r')
+      .replace(/\n/g, '\\n\n');
+  }
+
+  function addLog(kind, text) {
+    const entry = { at: nowTime(), kind, text: String(text || '') };
+    logEntries.push(entry);
+    if (logEntries.length > LOG_LIMIT) logEntries = logEntries.slice(-LOG_LIMIT);
+
+    const line = document.createElement('div');
+    line.className = 'log-line';
+    const time = document.createElement('span');
+    time.className = 'time';
+    time.textContent = '[' + entry.at + '] ';
+    const body = document.createElement('span');
+    body.className = kind;
+    body.textContent = entry.text;
+    line.append(time, body);
+    $('terminal').appendChild(line);
+    $('terminal').scrollTop = $('terminal').scrollHeight;
+  }
+
+  function clearLog() {
+    logEntries = [];
+    $('terminal').innerHTML = '';
+  }
+
+  function logText() {
+    return logEntries.map((entry) => '[' + entry.at + '] ' + entry.kind.toUpperCase() + ' ' + entry.text).join('\n');
+  }
+
+  function loadHistory() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+      return Array.isArray(parsed) ? parsed.filter(Boolean).map(String).slice(0, 10) : [];
+    } catch (_error) {
+      return [];
+    }
+  }
+
+  function saveHistory() {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(commandHistory.slice(0, 10)));
+  }
+
+  function rememberCommand(command) {
+    const clean = String(command || '').trim();
+    if (!clean) return;
+    commandHistory = [clean, ...commandHistory.filter((item) => item !== clean)].slice(0, 10);
+    saveHistory();
+    renderHistory();
+  }
+
+  function renderHistory() {
+    const box = $('history');
+    box.innerHTML = '';
+    if (!commandHistory.length) {
+      const p = document.createElement('p');
+      p.className = 'help';
+      p.textContent = 'No command history yet. Commands sent from the terminal and buttons will appear here.';
+      box.appendChild(p);
+      return;
+    }
+    for (const command of commandHistory) {
+      const row = document.createElement('div');
+      row.className = 'history-row';
+      const fill = document.createElement('button');
+      fill.className = 'ghost small';
+      fill.textContent = command;
+      fill.title = 'Click to fill input';
+      fill.addEventListener('click', () => {
+        $('commandInput').value = command;
+        $('commandInput').focus();
+      });
+      const send = document.createElement('button');
+      send.className = 'secondary small';
+      send.textContent = 'Send';
+      send.addEventListener('click', () => sendCommand(command));
+      row.append(fill, send);
+      box.appendChild(row);
+    }
+  }
+
+  function lineEnding() {
+    const selected = $('lineEnding').value;
+    if (selected === 'crlf') return '\r\n';
+    if (selected === 'none') return '';
+    return '\n';
+  }
+
+  function delayMs() {
+    const value = Number($('sendDelay').value || 100);
+    return Number.isFinite(value) && value >= 0 ? value : 100;
+  }
+
+  function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  function ensureSerialSupported() {
+    const supported = 'serial' in navigator;
+    if (supported) {
+      setPill($('supportStatus'), 'Browser: Web Serial supported', 'ok');
+      $('unsupportedNotice').style.display = 'none';
+    } else {
+      setPill($('supportStatus'), 'Browser: Web Serial not supported', 'bad');
+      $('unsupportedNotice').style.display = 'block';
+      $('connectBtn').disabled = true;
+    }
+    return supported;
+  }
+
+  async function connectSerial() {
+    if (!ensureSerialSupported()) return;
+    if (port) return;
+    const baudRate = Number($('baudRate').value || 115200);
+    try {
+      port = await navigator.serial.requestPort();
+      await port.open({ baudRate, dataBits: 8, stopBits: 1, parity: 'none', flowControl: 'none' });
+      keepReading = true;
+      $('connectBtn').disabled = true;
+      $('disconnectBtn').disabled = false;
+      $('baudRate').disabled = true;
+      setPill($('portStatus'), 'Serial: connected @ ' + baudRate, 'ok');
+      addLog('sys', 'Serial connected at ' + baudRate + ' 8N1');
+      readLoop().catch((error) => addLog('err', 'Read loop stopped: ' + error.message));
+    } catch (error) {
+      port = null;
+      setPill($('portStatus'), 'Serial: disconnected', 'bad');
+      addLog('err', 'Failed to connect serial: ' + error.message);
+    }
+  }
+
+  async function readLoop() {
+    const decoder = new TextDecoder();
+    while (port && port.readable && keepReading) {
+      reader = port.readable.getReader();
+      try {
+        while (keepReading) {
+          const result = await reader.read();
+          if (result.done) break;
+          if (result.value) {
+            addLog('rx', 'RX: ' + printable(decoder.decode(result.value, { stream: true })));
+          }
+        }
+      } catch (error) {
+        if (keepReading) addLog('err', 'Serial read error: ' + error.message);
+      } finally {
+        try { reader.releaseLock(); } catch (_error) {}
+        reader = null;
+      }
+    }
+  }
+
+  async function disconnectSerial() {
+    keepReading = false;
+    try {
+      if (reader) await reader.cancel();
+    } catch (_error) {}
+    try {
+      await writeQueue.catch(() => {});
+      if (port) await port.close();
+    } catch (error) {
+      addLog('err', 'Serial close error: ' + error.message);
+    }
+    port = null;
+    $('connectBtn').disabled = !('serial' in navigator);
+    $('disconnectBtn').disabled = true;
+    $('baudRate').disabled = false;
+    setPill($('portStatus'), 'Serial: disconnected', 'bad');
+    addLog('sys', 'Serial disconnected');
+  }
+
+  async function writeSerial(text) {
+    if (!port || !port.writable) throw new Error('Serial port is not connected');
+    const writer = port.writable.getWriter();
+    try {
+      await writer.write(new TextEncoder().encode(text));
+    } finally {
+      writer.releaseLock();
+    }
+  }
+
+  function isReadonlyCommand(command) {
+    const clean = String(command || '').trim().toLowerCase();
+    return readonlyPrefixes.some((prefix) => clean === prefix || clean.startsWith(prefix + ' '));
+  }
+
+  async function sendCommand(command, options = {}) {
+    const clean = String(command || '').trim();
+    if (!clean) return;
+    if (!port) {
+      addLog('err', 'Connect a serial port before sending commands. Command not sent: ' + clean);
+      return;
+    }
+    writeQueue = writeQueue.then(async () => {
+      const payload = clean + (options.raw ? '' : lineEnding());
+      await writeSerial(payload);
+      addLog('tx', 'TX: ' + printable(payload));
+      if (options.remember !== false) rememberCommand(clean);
+      if (clean.toLowerCase() === 'save') setUnsaved(false);
+      else if (clean.toLowerCase() === 'clear') setUnsaved(false);
+      else if (options.changesConfig || (!options.readonly && !isReadonlyCommand(clean) && clean.toLowerCase() !== 'reboot')) setUnsaved(true);
+    }).catch((error) => addLog('err', 'Serial write failed: ' + error.message));
+    await writeQueue;
+  }
+
+  async function sendCommands(commands, options = {}) {
+    const list = commands.map((cmd) => String(cmd || '').trim()).filter(Boolean);
+    if (!list.length) return;
+    if (options.confirmText && !window.confirm(options.confirmText + '\n\n' + list.join('\n'))) return;
+    for (const command of list) {
+      await sendCommand(command, { changesConfig: options.changesConfig, readonly: options.readonly });
+      await sleep(delayMs());
+    }
+  }
+
+  function value(id) {
+    return String($(id).value || '').trim();
+  }
+
+  function checked(id) {
+    return $(id).checked;
+  }
+
+  function boolWord(id) {
+    return checked(id) ? 'on' : 'off';
+  }
+
+  function requireValue(id, label) {
+    const v = value(id);
+    if (!v) throw new Error(label + ' is required');
+    if (/[\r\n]/.test(v)) throw new Error(label + ' must be one line');
+    return v;
+  }
+
+  function warnWhitespace(v, label) {
+    if (/\s/.test(v)) addLog('warn-text', 'Warning: ' + label + ' contains whitespace. Confirm firmware parser behavior for this command.');
+  }
+
+  function numberValue(id, label, min, max) {
+    const raw = requireValue(id, label);
+    const n = Number(raw);
+    if (!Number.isInteger(n) || n < min || n > max) throw new Error(label + ' must be an integer from ' + min + ' to ' + max);
+    return String(n);
+  }
+
+  function buildWifiCommands() {
+    const ssid = requireValue('wifiSsid', 'WiFi SSID');
+    const password = requireValue('wifiPassword', 'WiFi password');
+    warnWhitespace(ssid, 'WiFi SSID');
+    warnWhitespace(password, 'WiFi password');
+    return ['wifi set ' + ssid + ' ' + password];
+  }
+
+  function buildTcpCommands() {
+    const mode = value('tcpMode');
+    const commands = [];
+    if (mode === 'off') {
+      commands.push('tcp off');
+    } else if (mode === 'server') {
+      const portNo = numberValue('serverPort', 'TCP server port', 1, 65535);
+      if (portNo === '80') throw new Error('TCP server port must not be 80 because the web portal uses port 80 by default');
+      commands.push('tcp server ' + portNo);
+    } else if (mode === 'client') {
+      const host = requireValue('clientHost', 'Client host');
+      const portNo = numberValue('clientPort', 'Client port', 1, 65535);
+      commands.push('tcp client ' + host + ' ' + portNo);
+    }
+    commands.push('tcp events ' + boolWord('tcpEvents'));
+    commands.push('tcp commands ' + boolWord('tcpCommands'));
+    return commands;
+  }
+
+  function buildElechouseCommands() {
+    const code = requireValue('elechouseCode', 'ELECHOUSE session code');
+    if (!/^[A-Za-z0-9_.:-]{1,64}$/.test(code)) throw new Error('ELECHOUSE code may only contain A-Z, a-z, 0-9, underscore, dot, colon, or dash');
+    return ['elechouse on ' + code, 'tcp events on', 'tcp commands on'];
+  }
+
+  function buildInterfaceCommands(forcedMode) {
+    const mode = forcedMode || value('interfaceMode');
+    const commands = ['interface mode ' + mode, 'interface ' + (checked('interfaceEnabled') ? 'on' : 'off'), 'interface events ' + boolWord('interfaceEvents')];
+    if (mode === 'uart') {
+      commands.push('interface baud ' + numberValue('interfaceBaud', 'UART baud', 300, 2000000));
+      commands.push('interface commands ' + boolWord('interfaceCommands'));
+    } else {
+      commands.push('interface pulse ' + numberValue('pulseUs', 'Pulse us', 1, 100000) + ' ' + numberValue('pulseGapUs', 'Pulse gap us', 1, 1000000));
+      if (mode === 'wiegand') {
+        const bits = value('wiegandBits');
+        if (!['26', '34', '37', '56'].includes(bits)) throw new Error('Wiegand bits must be 26, 34, 37, or 56');
+        commands.push('interface wiegand bits ' + bits);
+      }
+      if (mode === 'aba') {
+        commands.push('interface aba digits ' + numberValue('abaDigits', 'ABA digits', 0, 32));
+        commands.push('interface aba source ' + value('abaSource'));
+      }
+    }
+    return commands;
+  }
+
+  function buildReaderCommands() {
+    return [
+      'format ' + value('outputFormat'),
+      'window ' + numberValue('lfWindow', 'LF window', 1, 60000) + ' ' + numberValue('hfWindow', 'HF window', 1, 60000),
+      'dedupe ' + numberValue('dedupeMs', 'Dedupe ms', 0, 600000),
+      'auto lf ' + value('lfAuto'),
+      'auto hf ' + value('hfAuto')
+    ];
+  }
+
+  function buildRfCommands() {
+    return [
+      'lf freq ' + numberValue('lfFreq', 'LF carrier Hz', 10000, 1000000),
+      'hf speed ' + numberValue('hfSpeed', 'HF I2C Hz', 10000, 2000000),
+      'hf init'
+    ];
+  }
+
+  function buildHfCommands() {
+    const commands = ['hf mode ' + value('hfMode')];
+    commands.push('hf tech a ' + (checked('techA') ? 'on' : 'off'));
+    commands.push('hf tech b ' + (checked('techB') ? 'on' : 'off'));
+    commands.push('hf tech f ' + (checked('techF') ? 'on' : 'off'));
+    commands.push('hf tech v ' + (checked('techV') ? 'on' : 'off'));
+    if (value('cardUid')) commands.push('hf card uid ' + value('cardUid'));
+    if (value('ndefUrl')) commands.push('hf card ndef url ' + value('ndefUrl'));
+    return commands;
+  }
+
+  function buildFeedbackCommands() {
+    return [
+      checked('feedbackEnabled') ? 'feedback on' : 'feedback off',
+      'feedback buzzer ' + numberValue('buzzerHz', 'Buzzer Hz', 1, 30000) + ' ' + numberValue('buzzerMs', 'Buzzer ms', 0, 10000),
+      'feedback success_ms ' + numberValue('successMs', 'Success ms', 0, 60000),
+      checked('buttonEnabled') ? 'button on' : 'button off',
+      'button timing ' + numberValue('wifiPressMs', 'WiFi press ms', 500, 60000) + ' ' + numberValue('resetPressMs', 'Reset press ms', 500, 120000)
+    ];
+  }
+
+  function buildPortalCommands() {
+    const ssid = requireValue('portalSsid', 'AP SSID');
+    const password = value('portalPassword');
+    warnWhitespace(ssid, 'AP SSID');
+    warnWhitespace(password, 'AP password');
+    return ['portal ssid ' + ssid + (password ? ' ' + password : '')];
+  }
+
+  function showError(error) {
+    addLog('err', error.message || String(error));
+  }
+
+  function setPreview(title, commands) {
+    $('presetTitle').textContent = title;
+    $('presetPreview').value = commands.join('\n');
+  }
+
+  function appendSaveReboot(commands, includeReboot) {
+    const list = [...commands, 'save'];
+    if (includeReboot) list.push('reboot');
+    return list;
+  }
+
+  function setupEvents() {
+    $('connectBtn').addEventListener('click', connectSerial);
+    $('disconnectBtn').addEventListener('click', disconnectSerial);
+    $('sendCommandBtn').addEventListener('click', () => sendCommand($('commandInput').value));
+    $('commandInput').addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        sendCommand($('commandInput').value);
+      }
+    });
+
+    document.querySelectorAll('[data-command]').forEach((button) => {
+      button.addEventListener('click', () => sendCommand(button.dataset.command || '', { readonly: isReadonlyCommand(button.dataset.command || '') }));
+    });
+
+    $('statusBundleBtn').addEventListener('click', () => sendCommands(['status', 'wifi status', 'tcp status', 'elechouse status', 'interface status'], { readonly: true }));
+    $('saveBtn').addEventListener('click', () => sendCommand('save'));
+    $('rebootBtn').addEventListener('click', () => sendCommands(['reboot'], { confirmText: 'Reboot the device now?' }));
+    $('clearBtn').addEventListener('click', () => sendCommands(['clear'], { confirmText: 'Clear saved configuration from the device?' }));
+    $('wifiClearBtn').addEventListener('click', () => sendCommands(['wifi clear'], { confirmText: 'Clear saved WiFi settings?' }));
+
+    $('applyWifiBtn').addEventListener('click', () => { try { sendCommands(buildWifiCommands(), { changesConfig: true }); } catch (e) { showError(e); } });
+    $('wifiScanBtn').addEventListener('click', () => sendCommand('wifi scan', { readonly: true }));
+    $('wifiReconnectBtn').addEventListener('click', () => sendCommand('wifi reconnect'));
+    $('applyTcpBtn').addEventListener('click', () => { try { sendCommands(buildTcpCommands(), { changesConfig: true }); } catch (e) { showError(e); } });
+    $('applyElechouseBtn').addEventListener('click', () => { try { sendCommands(buildElechouseCommands(), { changesConfig: true }); } catch (e) { showError(e); } });
+    $('applyInterfaceBtn').addEventListener('click', () => { try { sendCommands(buildInterfaceCommands(), { changesConfig: true }); } catch (e) { showError(e); } });
+    $('applyReaderBtn').addEventListener('click', () => { try { sendCommands(buildReaderCommands(), { changesConfig: true }); } catch (e) { showError(e); } });
+    $('applyRfBtn').addEventListener('click', () => { try { sendCommands(buildRfCommands(), { changesConfig: true }); } catch (e) { showError(e); } });
+    $('applyHfBtn').addEventListener('click', () => { try { sendCommands(buildHfCommands(), { changesConfig: true }); } catch (e) { showError(e); } });
+    $('applyFeedbackBtn').addEventListener('click', () => { try { sendCommands(buildFeedbackCommands(), { changesConfig: true }); } catch (e) { showError(e); } });
+    $('applyPortalBtn').addEventListener('click', () => { try { sendCommands(buildPortalCommands(), { changesConfig: true }); } catch (e) { showError(e); } });
+
+    $('presetTcpServerBtn').addEventListener('click', () => { try { setPreview('WiFi + TCP Server', appendSaveReboot([...buildWifiCommands(), ...buildTcpCommands(), 'format json'], true)); } catch (e) { showError(e); } });
+    $('presetElechouseBtn').addEventListener('click', () => { try { setPreview('ELECHOUSE Online Test', appendSaveReboot(buildElechouseCommands(), true)); } catch (e) { showError(e); } });
+    $('presetUartBtn').addEventListener('click', () => { try { setPreview('UART output', appendSaveReboot(buildInterfaceCommands('uart'), false)); } catch (e) { showError(e); } });
+    $('presetWiegandBtn').addEventListener('click', () => { try { $('interfaceMode').value = 'wiegand'; refreshInterfaceWarning(); setPreview('Wiegand 34-bit output', appendSaveReboot(buildInterfaceCommands('wiegand'), false)); } catch (e) { showError(e); } });
+    $('presetAbaBtn').addEventListener('click', () => { try { $('interfaceMode').value = 'aba'; refreshInterfaceWarning(); setPreview('ABA Clock/Data output', appendSaveReboot(buildInterfaceCommands('aba'), false)); } catch (e) { showError(e); } });
+    $('presetDefaultsBtn').addEventListener('click', () => setPreview('Restore defaults', ['clear', 'reboot']));
+    $('sendPreviewBtn').addEventListener('click', () => {
+      const lines = $('presetPreview').value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+      const dangerous = lines.some((line) => /^(clear|reboot|wifi clear)\b/i.test(line));
+      sendCommands(lines, { changesConfig: true, confirmText: dangerous ? 'Send this command preview? It includes clear/reboot-style commands.' : 'Send this command preview?' });
+    });
+    $('copyPreviewBtn').addEventListener('click', async () => {
+      await navigator.clipboard.writeText($('presetPreview').value);
+      addLog('sys', 'Command preview copied');
+    });
+
+    $('copyLogBtn').addEventListener('click', async () => {
+      await navigator.clipboard.writeText(logText());
+      addLog('sys', 'Log copied');
+    });
+    $('downloadLogBtn').addEventListener('click', () => {
+      const blob = new Blob([logText() + '\n'], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'elechouse-rfid-serial-log-' + new Date().toISOString().replace(/[:.]/g, '-') + '.txt';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    });
+    $('clearLogBtn').addEventListener('click', clearLog);
+    $('clearHistoryBtn').addEventListener('click', () => {
+      commandHistory = [];
+      saveHistory();
+      renderHistory();
+    });
+
+    $('interfaceMode').addEventListener('change', refreshInterfaceWarning);
+
+    if ('serial' in navigator) {
+      navigator.serial.addEventListener('disconnect', (event) => {
+        if (event.target === port) disconnectSerial();
+      });
+    }
+  }
+
+  function refreshInterfaceWarning() {
+    $('interfaceWarning').style.display = value('interfaceMode') === 'uart' ? 'none' : 'block';
+  }
+
+  window.addEventListener('beforeunload', (event) => {
+    if (!unsavedChanges) return;
+    event.preventDefault();
+    event.returnValue = '';
+  });
+
+  ensureSerialSupported();
+  renderHistory();
+  refreshInterfaceWarning();
+  setupEvents();
+  addLog('sys', 'Serial configuration page ready. Broker base: ' + BROKER_BASE_PATH);
+})();
+</script>
+</body>
+</html>

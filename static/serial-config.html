@@ -34,6 +34,7 @@
     .hero-links { margin-top:14px; }
     .hero-links a { color:white; background:rgba(255,255,255,.14); padding:7px 10px; border-radius:999px; }
     .grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(340px,.82fr); gap:18px; margin-top:18px; }
+    .grid.one-col { grid-template-columns:1fr; }
     .config-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; margin-top:18px; }
     .card { background:white; border:1px solid var(--line); border-radius:18px; padding:18px; box-shadow:0 8px 24px rgba(15,23,42,.04); }
     .card.soft { background:#fbfdff; }
@@ -92,17 +93,13 @@
         <span id="portStatus" class="pill bad">Serial: disconnected</span>
         <span id="saveStatus" class="pill neutral">No unsaved changes tracked</span>
       </div>
-      <div class="row hero-links">
-        <a href="%%BROKER_BASE_PATH_HTML%%/">TCP Broker Test</a>
-        <a href="%%BROKER_BASE_PATH_HTML%%/firmware" target="_blank" rel="noopener">Firmware Guide</a>
-      </div>
     </section>
 
     <div id="unsupportedNotice" class="notice bad" style="display:none;margin-top:18px;">
       This browser does not support Web Serial. Please use desktop Chrome, Edge, or another Chromium-based browser over HTTPS or localhost. Safari, Firefox, iOS, and most in-app browsers cannot open serial ports.
     </div>
 
-    <div class="grid">
+    <div class="grid one-col">
       <main class="card">
         <div class="row" style="justify-content:space-between;margin-bottom:12px;">
           <h2 style="margin:0;">Serial connection</h2>
@@ -143,37 +140,16 @@
         <div class="row" style="margin-top:14px;">
           <button id="connectBtn">Connect serial port</button>
           <button id="disconnectBtn" class="secondary" disabled>Disconnect</button>
-          <button id="statusBundleBtn" class="ghost">Read status</button>
-          <button id="saveBtn" class="secondary">save</button>
-          <button id="rebootBtn" class="warn">reboot</button>
+          <button id="statusBundleBtn" class="ghost">Read device status</button>
+          <button id="saveBtn" class="secondary">Save settings to device</button>
+          <button id="rebootBtn" class="warn">Restart device</button>
         </div>
+        <p class="help"><b>Save settings to device</b> sends <code>save</code> and stores the current runtime configuration in device flash/NVS, so it remains after power-off. <b>Restart device</b> sends <code>reboot</code> and restarts the hardware.</p>
         <p class="help">Tip: product interface UART mode uses GPIO44/GPIO43. If the device is switched to Wiegand or ABA, use USB CDC or TCP for further command configuration.</p>
       </main>
-
-      <aside class="card soft">
-        <h2>Common command presets</h2>
-        <div class="quick-grid">
-          <button class="ghost" data-command="status">status</button>
-          <button class="ghost" data-command="wifi status">wifi status</button>
-          <button class="ghost" data-command="tcp status">tcp status</button>
-          <button class="ghost" data-command="elechouse status">elechouse status</button>
-          <button class="ghost" data-command="interface status">interface status</button>
-          <button class="ghost" data-command="pins">pins</button>
-          <button class="ghost" data-command="test">test</button>
-          <button class="ghost" data-command="help">help</button>
-        </div>
-        <div class="danger-zone" style="margin-top:14px;">
-          <b>Dangerous commands</b>
-          <p class="help" style="margin:6px 0 10px;">These require confirmation because they can disconnect the device or erase saved configuration.</p>
-          <div class="row">
-            <button id="clearBtn" class="bad small">clear</button>
-            <button id="wifiClearBtn" class="bad small">wifi clear</button>
-          </div>
-        </div>
-      </aside>
     </div>
 
-    <div class="grid">
+    <div class="grid one-col">
       <main class="card">
         <div class="row" style="justify-content:space-between;margin-bottom:12px;">
           <h2 style="margin:0;">Serial terminal</h2>
@@ -195,25 +171,6 @@
         <div id="history" class="history"></div>
       </main>
 
-      <aside class="card">
-        <h2>Preset wizard</h2>
-        <p class="help">Use the fields below, preview a common setup, then send the command list. The preview is editable before sending.</p>
-        <div class="quick-grid">
-          <button id="presetTcpServerBtn" class="ghost">WiFi + TCP Server</button>
-          <button id="presetElechouseBtn" class="ghost">ELECHOUSE Online Test</button>
-          <button id="presetUartBtn" class="ghost">UART output</button>
-          <button id="presetWiegandBtn" class="ghost">Wiegand 34-bit</button>
-          <button id="presetAbaBtn" class="ghost">ABA Clock/Data</button>
-          <button id="presetDefaultsBtn" class="ghost">Restore defaults</button>
-        </div>
-        <h3 id="presetTitle">Command preview</h3>
-        <textarea id="presetPreview" class="command-preview" placeholder="Click a preset button to generate commands. You can edit the list before sending."></textarea>
-        <div class="row" style="margin-top:10px;">
-          <button id="sendPreviewBtn">Send preview</button>
-          <button id="copyPreviewBtn" class="secondary">Copy</button>
-        </div>
-        <p class="help">For persistent settings, include <code>save</code>. Use <code>reboot</code> only when needed.</p>
-      </aside>
     </div>
 
     <div class="config-grid">
@@ -231,10 +188,11 @@
         </div>
         <div class="row" style="margin-top:12px;">
           <button id="applyWifiBtn">Send WiFi settings</button>
-          <button id="wifiScanBtn" class="secondary">wifi scan</button>
-          <button id="wifiReconnectBtn" class="secondary">wifi reconnect</button>
+          <button id="wifiScanBtn" class="secondary">Scan nearby WiFi</button>
+          <button id="wifiReconnectBtn" class="secondary">Reconnect saved WiFi</button>
         </div>
         <p class="help">Current firmware command format is <code>wifi set &lt;ssid&gt; &lt;password&gt;</code>. If SSID or password contains spaces, verify firmware parser support before relying on it.</p>
+        <p class="help"><b>Scan nearby WiFi</b> sends <code>wifi scan</code>. Scanning may temporarily interrupt the current WiFi connection on ESP32; use <b>Reconnect saved WiFi</b> after scanning if the device does not reconnect automatically.</p>
       </section>
 
       <section class="card">
@@ -245,36 +203,37 @@
             <select id="tcpMode">
               <option value="server" selected>Server</option>
               <option value="client">Client</option>
+              <option value="elechouse">ELECHOUSE Test</option>
               <option value="off">Off</option>
             </select>
           </div>
-          <div>
+          <div class="tcp-field" data-modes="server">
             <label for="serverPort">Server port</label>
             <input id="serverPort" value="9000" inputmode="numeric">
           </div>
-          <div>
+          <div class="tcp-field" data-modes="client">
             <label for="clientHost">Client host</label>
             <input id="clientHost" placeholder="192.168.1.20 or domain">
           </div>
-          <div>
+          <div class="tcp-field" data-modes="client">
             <label for="clientPort">Client port</label>
             <input id="clientPort" value="9000" inputmode="numeric">
           </div>
-          <div>
+          <div class="tcp-field" data-modes="elechouse">
             <label for="elechouseCode">ELECHOUSE session code</label>
             <input id="elechouseCode" placeholder="A7K3Q9M2" maxlength="64">
           </div>
-          <div class="row" style="align-items:end;padding-bottom:4px;">
+          <div class="row tcp-field" data-modes="server client elechouse" style="align-items:end;padding-bottom:4px;">
             <label class="inline"><input id="tcpEvents" type="checkbox" checked> events</label>
             <label class="inline"><input id="tcpCommands" type="checkbox" checked> commands</label>
           </div>
         </div>
         <div class="row" style="margin-top:12px;">
-          <button id="applyTcpBtn">Apply TCP</button>
-          <button id="applyElechouseBtn">Apply ELECHOUSE Test</button>
+          <button id="applyTcpBtn">Apply selected TCP mode</button>
           <button class="secondary" data-command="tcp status">tcp status</button>
+          <button class="secondary" data-command="elechouse status">elechouse status</button>
         </div>
-        <p class="help">TCP server port must not conflict with the portal web port. Avoid port 80; 9000 is recommended.</p>
+        <p id="tcpModeHelp" class="help"></p>
       </section>
 
       <section class="card">
@@ -745,7 +704,9 @@
     const commands = [];
     if (mode === 'off') {
       commands.push('tcp off');
-    } else if (mode === 'server') {
+      return commands;
+    }
+    if (mode === 'server') {
       const portNo = numberValue('serverPort', 'TCP server port', 1, 65535);
       if (portNo === '80') throw new Error('TCP server port must not be 80 because the web portal uses port 80 by default');
       commands.push('tcp server ' + portNo);
@@ -753,16 +714,14 @@
       const host = requireValue('clientHost', 'Client host');
       const portNo = numberValue('clientPort', 'Client port', 1, 65535);
       commands.push('tcp client ' + host + ' ' + portNo);
+    } else if (mode === 'elechouse') {
+      const code = requireValue('elechouseCode', 'ELECHOUSE session code');
+      if (!/^[A-Za-z0-9_.:-]{1,64}$/.test(code)) throw new Error('ELECHOUSE code may only contain A-Z, a-z, 0-9, underscore, dot, colon, or dash');
+      commands.push('elechouse on ' + code);
     }
     commands.push('tcp events ' + boolWord('tcpEvents'));
     commands.push('tcp commands ' + boolWord('tcpCommands'));
     return commands;
-  }
-
-  function buildElechouseCommands() {
-    const code = requireValue('elechouseCode', 'ELECHOUSE session code');
-    if (!/^[A-Za-z0-9_.:-]{1,64}$/.test(code)) throw new Error('ELECHOUSE code may only contain A-Z, a-z, 0-9, underscore, dot, colon, or dash');
-    return ['elechouse on ' + code, 'tcp events on', 'tcp commands on'];
   }
 
   function buildInterfaceCommands(forcedMode) {
@@ -848,6 +807,22 @@
     return list;
   }
 
+
+  function refreshTcpModeFields() {
+    const mode = value('tcpMode');
+    document.querySelectorAll('.tcp-field').forEach((el) => {
+      const modes = String(el.dataset.modes || '').split(/\s+/).filter(Boolean);
+      el.style.display = modes.includes(mode) ? '' : 'none';
+    });
+    const help = {
+      server: 'Server mode: the device listens on the selected port. Use this when your host software connects to the device IP.',
+      client: 'Client mode: the device actively connects to your host/server address and port.',
+      elechouse: 'ELECHOUSE Test mode: the device connects to www.elechouse.com:9000 using the session code from the online test page.',
+      off: 'Off mode: disables the device TCP socket.'
+    };
+    $('tcpModeHelp').textContent = help[mode] || '';
+  }
+
   function setupEvents() {
     $('connectBtn').addEventListener('click', connectSerial);
     $('disconnectBtn').addEventListener('click', disconnectSerial);
@@ -866,14 +841,10 @@
     $('statusBundleBtn').addEventListener('click', () => sendCommands(['status', 'wifi status', 'tcp status', 'elechouse status', 'interface status'], { readonly: true }));
     $('saveBtn').addEventListener('click', () => sendCommand('save'));
     $('rebootBtn').addEventListener('click', () => sendCommands(['reboot'], { confirmText: 'Reboot the device now?' }));
-    $('clearBtn').addEventListener('click', () => sendCommands(['clear'], { confirmText: 'Clear saved configuration from the device?' }));
-    $('wifiClearBtn').addEventListener('click', () => sendCommands(['wifi clear'], { confirmText: 'Clear saved WiFi settings?' }));
-
     $('applyWifiBtn').addEventListener('click', () => { try { sendCommands(buildWifiCommands(), { changesConfig: true }); } catch (e) { showError(e); } });
     $('wifiScanBtn').addEventListener('click', () => sendCommand('wifi scan', { readonly: true }));
     $('wifiReconnectBtn').addEventListener('click', () => sendCommand('wifi reconnect'));
     $('applyTcpBtn').addEventListener('click', () => { try { sendCommands(buildTcpCommands(), { changesConfig: true }); } catch (e) { showError(e); } });
-    $('applyElechouseBtn').addEventListener('click', () => { try { sendCommands(buildElechouseCommands(), { changesConfig: true }); } catch (e) { showError(e); } });
     $('applyInterfaceBtn').addEventListener('click', () => { try { sendCommands(buildInterfaceCommands(), { changesConfig: true }); } catch (e) { showError(e); } });
     $('applyReaderBtn').addEventListener('click', () => { try { sendCommands(buildReaderCommands(), { changesConfig: true }); } catch (e) { showError(e); } });
     $('applyRfBtn').addEventListener('click', () => { try { sendCommands(buildRfCommands(), { changesConfig: true }); } catch (e) { showError(e); } });
@@ -881,21 +852,6 @@
     $('applyFeedbackBtn').addEventListener('click', () => { try { sendCommands(buildFeedbackCommands(), { changesConfig: true }); } catch (e) { showError(e); } });
     $('applyPortalBtn').addEventListener('click', () => { try { sendCommands(buildPortalCommands(), { changesConfig: true }); } catch (e) { showError(e); } });
 
-    $('presetTcpServerBtn').addEventListener('click', () => { try { setPreview('WiFi + TCP Server', appendSaveReboot([...buildWifiCommands(), ...buildTcpCommands(), 'format json'], true)); } catch (e) { showError(e); } });
-    $('presetElechouseBtn').addEventListener('click', () => { try { setPreview('ELECHOUSE Online Test', appendSaveReboot(buildElechouseCommands(), true)); } catch (e) { showError(e); } });
-    $('presetUartBtn').addEventListener('click', () => { try { setPreview('UART output', appendSaveReboot(buildInterfaceCommands('uart'), false)); } catch (e) { showError(e); } });
-    $('presetWiegandBtn').addEventListener('click', () => { try { $('interfaceMode').value = 'wiegand'; refreshInterfaceWarning(); setPreview('Wiegand 34-bit output', appendSaveReboot(buildInterfaceCommands('wiegand'), false)); } catch (e) { showError(e); } });
-    $('presetAbaBtn').addEventListener('click', () => { try { $('interfaceMode').value = 'aba'; refreshInterfaceWarning(); setPreview('ABA Clock/Data output', appendSaveReboot(buildInterfaceCommands('aba'), false)); } catch (e) { showError(e); } });
-    $('presetDefaultsBtn').addEventListener('click', () => setPreview('Restore defaults', ['clear', 'reboot']));
-    $('sendPreviewBtn').addEventListener('click', () => {
-      const lines = $('presetPreview').value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-      const dangerous = lines.some((line) => /^(clear|reboot|wifi clear)\b/i.test(line));
-      sendCommands(lines, { changesConfig: true, confirmText: dangerous ? 'Send this command preview? It includes clear/reboot-style commands.' : 'Send this command preview?' });
-    });
-    $('copyPreviewBtn').addEventListener('click', async () => {
-      await navigator.clipboard.writeText($('presetPreview').value);
-      addLog('sys', 'Command preview copied');
-    });
 
     $('copyLogBtn').addEventListener('click', async () => {
       await navigator.clipboard.writeText(logText());
@@ -920,6 +876,7 @@
     });
 
     $('interfaceMode').addEventListener('change', refreshInterfaceWarning);
+    $('tcpMode').addEventListener('change', refreshTcpModeFields);
 
     if ('serial' in navigator) {
       navigator.serial.addEventListener('disconnect', (event) => {
@@ -941,6 +898,7 @@
   ensureSerialSupported();
   renderHistory();
   refreshInterfaceWarning();
+  refreshTcpModeFields();
   setupEvents();
   addLog('sys', 'Serial configuration page ready. Broker base: ' + BROKER_BASE_PATH);
 })();

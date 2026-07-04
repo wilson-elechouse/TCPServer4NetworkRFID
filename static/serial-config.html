@@ -377,6 +377,7 @@
           <summary>HF scan / card emulation</summary>
           <div class="form-grid" style="margin-top:12px;">
             <div><label for="hfMode">HF mode</label><select id="hfMode"><option value="scan" selected>Scan</option><option value="card">Card emulation</option></select></div>
+            <div class="hf-field" data-modes="card"><label for="hfCardType">Card type</label><select id="hfCardType"><option value="type2" selected>NFC Forum Type 2 Tag</option><option value="type4">NFC Forum Type 4 Tag</option></select></div>
             <div class="hf-field" data-modes="card"><label for="cardUid">Card UID</label><input id="cardUid" placeholder="02 00 00 01"></div>
             <div class="full hf-field" data-modes="card"><label for="ndefUrl">NDEF URL</label><input id="ndefUrl" placeholder="https://www.elechouse.com/"></div>
             <div class="row full hf-field" data-modes="scan">
@@ -864,6 +865,7 @@
       commands.push('hf tech f ' + (checked('techF') ? 'on' : 'off'));
       commands.push('hf tech v ' + (checked('techV') ? 'on' : 'off'));
     } else if (mode === 'card') {
+      commands.push('hf card type ' + value('hfCardType'));
       if (value('cardUid')) commands.push('hf card uid ' + value('cardUid'));
       if (value('ndefUrl')) commands.push('hf card ndef url ' + value('ndefUrl'));
     }
@@ -916,7 +918,7 @@
     });
     const help = {
       scan: 'Scan mode: enable the HF polling technologies the reader should look for.',
-      card: 'Card emulation mode: configure the emulated NFC-A Type 4 Tag UID and NDEF URL. Actual listen-mode behavior depends on firmware/driver support.'
+      card: 'Card emulation mode: choose NFC Forum Type 2 or Type 4, then configure UID and NDEF URL. Actual listen-mode behavior depends on firmware/driver support.'
     };
     $('hfModeHelp').textContent = help[mode] || '';
   }
